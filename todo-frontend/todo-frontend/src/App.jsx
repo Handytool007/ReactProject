@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import './App.css';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import ForgotPassword from './pages/ForgotPassword';
 
 // We'll set the token in Axios's default headers after login
 const setAuthToken = (token) => {
@@ -13,15 +15,16 @@ const setAuthToken = (token) => {
   }
 };
 
-function App() {
+function AppContent() {
   const [todos, setTodos] = useState([]);
   const [loading, setLoading] = useState(true);
   
   // 🎯 NEW: State for user and authentication
   const [user, setUser] = useState(null); // Stores { userId, username, token }
   const [isLogin, setIsLogin] = useState(true); // Toggle between Login/Register forms
-  const [authForm, setAuthForm] = useState({ username: '', password: '' });
+  const [authForm, setAuthForm] = useState({ username: '', password: '', mobileNumber: '' }); // Added mobileNumber
   const [newTodoText, setNewTodoText] = useState(''); // New todo input
+  const navigate = useNavigate();
 
   // Function to fetch todos (now requires token!)
   const fetchTodos = async () => {
@@ -44,6 +47,13 @@ function App() {
 
   // Run fetchTodos only when the user state changes
   useEffect(() => {
+    // Attempt to load user from localStorage on initial render
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      setUser(userData);
+      setAuthToken(userData.token); // Set token if user is found
+    }
     fetchTodos();
   }, [user]);
 
@@ -68,7 +78,8 @@ function App() {
         setUser(newUserData);
         localStorage.setItem('user', JSON.stringify(newUserData)); // Persist state
 
-        setAuthForm({ username: '', password: '' }); // Clear form
+        setAuthForm({ username: '', password: '', mobileNumber: '' }); // Clear form
+        navigate('/'); // Redirect to home/todos page after login/register
     } catch (error) {
         alert(error.response?.data?.message || 'Authentication failed');
         console.error('Auth error:', error);
@@ -81,6 +92,7 @@ function App() {
     setTodos([]);
     setAuthToken(null);
     localStorage.removeItem('user');
+    navigate('/login'); // Redirect to login page after logout
   };
 
   // --------------------------------------------------------
@@ -153,6 +165,15 @@ function App() {
             onChange={handleAuthChange}
             required
           />
+          {!isLogin && (
+            <input
+              type="text"
+              name="mobileNumber"
+              placeholder="Mobile Number (Optional)"
+              value={authForm.mobileNumber}
+              onChange={handleAuthChange}
+            />
+          )}
           <button type="submit">{isLogin ? 'Login' : 'Register'}</button>
         </form>
         <p>
@@ -160,6 +181,11 @@ function App() {
             {isLogin ? 'Need an account? Register' : 'Have an account? Login'}
           </button>
         </p>
+        {isLogin && (
+          <p>
+            <Link to="/forgot-password">Forgot Password?</Link>
+          </p>
+        )}
       </div>
     );
   }
@@ -222,6 +248,17 @@ function App() {
       )}
     </div>
   );
+}
+
+function App() {
+    return (
+        <Router>
+            <Routes>
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/*" element={<AppContent />} />
+            </Routes>
+        </Router>
+    );
 }
 
 export default App;
